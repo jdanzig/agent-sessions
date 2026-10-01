@@ -27,6 +27,14 @@ This is one piece of a remote-work setup built on Tailscale.
 
 The result is a loop that runs entirely from the phone: kick off work, it runs on the mini, the result comes back, no laptop in between.
 
+## Requirements
+
+- macOS (the always-on setup uses `launchd`; the server itself is plain Python).
+- Python 3, standard library only, no dependencies.
+- `tmux`.
+- The [Claude Code](https://claude.com/claude-code) CLI, installed and logged in (`claude`). Sessions are started with `claude remote-control`.
+- [Tailscale](https://tailscale.com) on the host and your phone, to reach the dashboard remotely. On the same Wi-Fi you can skip it and use the host's LAN IP.
+
 ## Running it
 
 ```
@@ -50,3 +58,10 @@ launchctl load ~/Library/LaunchAgents/com.example.agent-sessions.plist
 - Stateless. The folders on disk are the only state.
 - The HTML is served from `agent-sessions.html` and re-read on every request, so UI edits are live without a restart.
 - Reachable only on your tailnet. Do not expose the port publicly: it can start processes on your machine.
+
+## Scope and limitations
+
+- **macOS only** for the always-on install (`launchd`). The server is portable Python; the install flow is Mac-specific.
+- **No auth.** The tailnet is the security boundary. Anyone who can reach the port can list folders and start a session, so do not expose it beyond your tailnet or LAN.
+- **Single machine, single user.** It runs sessions on the host it is installed on. No remotes, no multi-user.
+- **Claude Code only.** It shells out to `claude remote-control`; another agent would need its own launch command.
