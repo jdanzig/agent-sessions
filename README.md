@@ -38,7 +38,13 @@ The result is a loop that runs entirely from the phone: kick off work, it runs o
 ## Running it
 
 ```
-python3 agent-sessions.py          # serves on http://0.0.0.0:8485
+python3 agent-sessions.py          # serves ~/code on http://0.0.0.0:8485
+```
+
+Point it at a different base directory, or run a second instance on another port:
+
+```
+python3 agent-sessions.py ~/clips 8486
 ```
 
 ### Always-on (macOS LaunchAgent)

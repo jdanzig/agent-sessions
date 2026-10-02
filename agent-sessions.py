@@ -6,17 +6,18 @@ a headless Claude Code Remote Control session inside any folder (steer it from
 the Claude app or claude.ai/code). Stateless: the folders on disk are the only
 state. Self-contained: no shared modules, reachable only over your tailnet.
 
-Run:  python3 agent-sessions.py          (port 8485)
+Run:  python3 agent-sessions.py [BASE_DIR] [PORT]   (defaults: ~/code, 8485)
 """
-import json, os, re, shlex, shutil, subprocess, threading
+import json, os, re, shlex, shutil, subprocess, sys, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-ROOT = os.path.expanduser("~/code")
+# Base dir to list and port are both optional:  agent-sessions.py [BASE_DIR] [PORT]
+ROOT = os.path.abspath(os.path.expanduser(sys.argv[1])) if len(sys.argv) > 1 else os.path.expanduser("~/code")
 # ponytail: dedicated socket so the tmux server is spawned by this LaunchAgent's
 # GUI login session -- an ssh-born "main" tmux server can't read the claude OAuth
 # keychain item, which breaks `claude remote-control`.
 TMUX = [shutil.which("tmux") or "/opt/homebrew/bin/tmux", "-L", "agent-sessions"]
-PORT = 8485
+PORT = int(sys.argv[2]) if len(sys.argv) > 2 else 8485
 SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ -]{0,60}$")
 # ponytail: serve the page from this sibling file, re-read per request, so HTML
 # edits go live without restarting the server. Materialized from PAGE on first run.
