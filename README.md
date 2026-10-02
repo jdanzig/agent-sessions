@@ -4,6 +4,8 @@ A small self-hosted web dashboard for launching coding-agent sessions on a remot
 
 I built it because SSHing into an always-on machine from a phone is miserable.
 
+![agent-sessions](docs/demo.gif)
+
 ## What it does
 
 - Lists the project folders under a base directory (`~/code`), newest first, with a live indicator on any folder that has a running session.

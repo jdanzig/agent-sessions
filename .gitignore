@@ -2,3 +2,4 @@
 agent-sessions.html
 __pycache__/
 *.pyc
+docs/*.mp4
