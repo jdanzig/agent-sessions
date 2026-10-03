@@ -22,6 +22,7 @@ SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ -]{0,60}$")
 # ponytail: serve the page from this sibling file, re-read per request, so HTML
 # edits go live without restarting the server. Materialized from PAGE on first run.
 HTML_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent-sessions.html")
+CLAUDE_JSON = os.path.expanduser("~/.claude.json")
 
 def safe_abs(name):
     """Resolve a top-level folder name under ROOT; refuse anything escaping it."""
@@ -41,13 +42,47 @@ def tmux_sessions():
     except Exception:
         return set()
 
+def trust_dir(absdir):
+    """Mark a workspace trusted in ~/.claude.json so headless `claude remote-control`
+    won't refuse it with the trust dialog it can't display (it would exit rc=1 and the
+    session would die silently). Clicking a folder in your own dashboard is the trust
+    decision. No-op if already trusted, to avoid rewriting a large shared config.
+    ponytail: read-modify-atomic-replace, no lock -- claude doesn't flock this file, so
+    a lock is false safety; worst case a concurrent claude write is lost (a metrics
+    field), never corruption, and only in the rare overlap window."""
+    try:
+        with open(CLAUDE_JSON, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return  # no/unreadable config: let claude handle trust itself
+    proj = data.setdefault("projects", {})
+    entry = proj.get(absdir)
+    if isinstance(entry, dict) and entry.get("hasTrustDialogAccepted"):
+        return  # already trusted
+    if isinstance(entry, dict):
+        entry["hasTrustDialogAccepted"] = True
+    else:
+        proj[absdir] = {"hasTrustDialogAccepted": True}
+    tmp = CLAUDE_JSON + ".agent-sessions.tmp"
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        os.replace(tmp, CLAUDE_JSON)
+    except OSError:
+        try: os.remove(tmp)
+        except OSError: pass
+
 def open_claude(name, absdir):
     """Start a detached tmux session running claude with Remote Control in absdir."""
     # -c resumes the folder's last conversation, falls back to fresh; zsh -lc
     # restores the launchd GUI-session env claude and the keychain need.
+    trust_dir(absdir)
     rc = shlex.quote(name)
+    # --spawn=same-dir on the fresh-start fallback: a project's first remote-control
+    # otherwise prompts for spawn mode and blocks, since nobody can answer it headless.
+    # (-c resume path left bare: an existing session already has its spawn mode set.)
     cmd = (f"cd {shlex.quote(absdir)}; claude remote-control -c --name {rc}"
-           f" || claude remote-control --name {rc}")
+           f" || claude remote-control --spawn=same-dir --name {rc}")
     subprocess.run(TMUX + ["new-session", "-d", "-s", tmux_name(name),
                     f"/bin/zsh -lc {shlex.quote(cmd)}"],
                    capture_output=True, timeout=10)
